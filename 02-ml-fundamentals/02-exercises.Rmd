@@ -1,10 +1,6 @@
 ---
 title: "02-exercises"
-<<<<<<< HEAD
 author: "Guzel Akhmadullina"
-=======
-author: "Christopher Brown"
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 date: "April 13, 2016"
 output: html_document
 ---
@@ -40,35 +36,23 @@ Hint: See `?cars2010`
 - After the **Fuel Economy** data is loaded, combine three data sets into one data set. (Note: The name `dat` is very often used in these situations, `data` is a reserved R word.)  
 
 ```{r}
-<<<<<<< HEAD
 dat <- bind_rows(cars2010, cars2011, cars2012)      
-=======
-dat <- bind_rows( cars2010, cars2011, cars2012)    # Define 
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 ```
 
 
 - What is a good "naive guess" of FE? Show your work
 
 ```{r}
-<<<<<<< HEAD
 qplot(dat$FE, bins=60)
 naive_guess <- median(dat$FE)
 naive_guess
-=======
-naive_guess <- mean(dat$FE)
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 ```
 
 
 - plot FE (Fuel Econonomy) vs. EngDisp. Plot the naive guess.
 
 ```{r}
-<<<<<<< HEAD
 dat  %>%  ggplot(aes(x=EngDispl, y=FE)) + geom_point() + geom_hline(yintercept = naive_guess, color="red") + stat_smooth(method="lm", se=FALSE) 
-=======
-# ... ggplot2  
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 ```
 
 - Sample 10 observations from `dat`
@@ -84,19 +68,7 @@ samp <- sample_n(dat,10)
 
 # Plots 
 samp  %>%  ggplot(aes(x=EngDispl, y=FE)) + geom_point() + geom_hline(yintercept = naive_guess, color="red") + stat_smooth(method="lm", se=FALSE) 
-=======
 
-```{r}
-
-set.seed(314) 
-
-# Sample 
-samp <- dat %>% dplyr::sample_n(10) 
-
-# Plots 
-...
-
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 
 ```
 
@@ -114,7 +86,6 @@ All functions should accept two arguments:
 
 ```{r}
 
-<<<<<<< HEAD
 rmse <- function(y, yhat) {
   (y - yhat)^2  %>%  mean()  %>% sqrt()
 }
@@ -125,18 +96,6 @@ mae <- function(y, yhat) {
 
 medae <- function(y, yhat) { 
   (y - yhat)  %>% abs()  %>% median()
-=======
-rmse <- function(y,yhat) {
-  ( y - yhat )^2  %>% mean   %>% sqrt 
-}
-
-mae <- function(y, yhat) {
-  # ...
-}
-
-medae <- function(y, yhat) { 
-  # ...
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 }
 
 ```
@@ -162,14 +121,12 @@ medae(dat$FE, naive_guess)
 
 
 ```{r}
-<<<<<<< HEAD
+
 
 fit.2010 <- lm(FE ~ EngDispl, data = cars2010)
 summary(fit.2010)
 
-=======
-fit.2010 <- ... 
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
+
 ```
 
 - Use your functions to evaluate the training error
@@ -179,7 +136,6 @@ fit.2010 <- ...
 
 ```{r}
 
-<<<<<<< HEAD
 y.2010 <- predict(fit.2010, data = cars2010)
 y.2011 <- predict(lm(FE ~ EngDispl, data = cars2011), data = cars2011)
 y.2012 <- predict(lm(FE ~ EngDispl, data = cars2012), data = cars2012)
@@ -191,15 +147,6 @@ rmse.2012 <- rmse(cars2012$FE, y.2012)
 qplot(x=cars2010$FE, y=y.2010) + stat_smooth(method="lm", se=FALSE)
 qplot(x=cars2011$FE, y=y.2011) + stat_smooth(method="lm", se=FALSE)
 qplot(x=cars2012$FE, y=y.2012) + stat_smooth(method="lm", se=FALSE)
-=======
-y.2010 <- ... 
-y.2011 <- ... 
-y.2012 <- ...
-
-rmse.2010 <- ...
-rmse.2011 <- ...
-rmse.2012 <- ... 
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
 
 ```
 
@@ -219,14 +166,11 @@ rmse.2012
 
 
 ```{r}
-<<<<<<< HEAD
+
 
 fit.2010 <- lm(FE ~ EngDispl + NumCyl + VarValveLift, data = cars2011)
 betas <- summary(fit.2010)$coefficients[,1]
 betas
 
-=======
-fit.2010 <- ...
-betas <- ...
->>>>>>> 556966077518c2e2067944796437a9e3521a7b46
+
 ```
