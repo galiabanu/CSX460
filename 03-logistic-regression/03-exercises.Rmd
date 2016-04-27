@@ -1,6 +1,6 @@
 ---
 title: "03-exercises"
-author: "Your Name Here"
+author: "Guzel Akhmadullina"
 date: "April 20, 2016"
 output: html_document
 ---
@@ -27,7 +27,7 @@ Note: The following will set-up your environment for this exercise. If you get a
 
 ```{r,echo=FALSE, warning=FALSE, message=FALSE}
 
-packs <-  c('AppliedPredictiveModeling', 'ggplot2', 'magrittr', 'dplyr', 'caret')
+packs <-  c('AppliedPredictiveModeling', 'ggplot2', 'magrittr', 'dplyr', 'caret', 'MASS')
 
 for( nm in packs ) { 
   # message(nm)
@@ -58,12 +58,37 @@ Using Fuel Economy data set from the **AppliedPredictiveModeling** Package.
 
 ```{r}
 
- # Your work here
+names(fe)  %>% cat(sep=" + ")
+form = ~ EngDispl + NumCyl + Transmission + AirAspirationMethod + NumGears + TransLockup + TransCreeperGear + DriveDesc + IntakeValvePerCyl + ExhaustValvesPerCyl + CarlineClassDesc + VarValveTiming + VarValveLift
 
+  # Your work here
+
+fit.min <- lm( FE ~ 1, fe )
+fit.min.forward <- stepAIC( fit.min, scope = form, direction = "forward")
+# summary(fit.min.forward)
+# coef.fit.min.forward = coef(fit.min.forward) 
+ 
+fit.full <- lm( FE ~ ., fe )
+fit.full.backward <- stepAIC( fit.full, scope = ~ 1, direction = "backward")
+# summary(fit.full.backward)
+# coef.fit.full.backward = coef(fit.full.backward) 
 ```
 
-- Are they the same model? If not why?  Which is better?
+- Are they the same model? If not why?  Which is better? JUstify your answer.
 
+FORWARD SELECTION:  
+
+AIC=3662.6
+
+FE = EngDispl + CarlineClassDesc + DriveDesc + Transmission + NumCyl + <span style="color:red">IntakeValvePerCyl</span> + VarValveLift + TransLockup + NumGears
+    
+BACKWARD SELECTION: 
+
+AIC=3663.23
+
+FE = EngDispl + NumCyl + Transmission + <span style="color:red">AirAspirationMethod</span> + NumGears + TransLockup + <span style="color:red">TransCreeperGear</span> + DriveDesc + <span style="color:red">ExhaustValvesPerCyl</span> + CarlineClassDesc + VarValveLift  
+
+Forward and Backward selections gave different models, since they evaluate the model on each step, and decide whether to add/drop a variable to/from the model. fit.min.forward is better since AIC coefficient is smaller to forward selection. But if we look to the summary of the models, there are some insignificant variables in both of the models. For cathegorical variables, we need to introduce dummy variables; for continuos - take out from the model.
 
 
 
@@ -84,16 +109,17 @@ Using Fuel Economy data set from the **AppliedPredictiveModeling** Package.
 ```{r}
 
 logistic <- function(x) { 
-  ... # Your work here  
+    return (1/(1 + exp(-x)))  
 }
 
-qplot( ... )
+qplot( -10:10, logistic(-10:10) )
 
 logistic_inv <- function(y) { 
-  ... # Your work  
+    return( log(y/(1-y)) )  
 }
 
-qplot(...) 
+y<- seq(0, 1, length.out = 100)
+qplot( logistic_inv(y), y)
 
 ```
 
@@ -101,6 +127,7 @@ qplot(...)
 
 ```{r}
 # DO NOT EDIT
+
 c(-Inf,0,Inf) %>% logistic
 
 c(0,0.5,1) %>% logistic_inv
@@ -114,7 +141,24 @@ Using the GermanCredit data from the **Caret** package/ UCI Machine Learning Lib
 
 ```{r}
 
+# summary(GermanCredit)
+# variable.names(GermanCredit)
+# GermanCredit[!complete.cases(GermanCredit),]
+# any(is.na(GermanCredit))
 
+
+fit.full.glm <- glm (Class ~ ., data = GermanCredit, family = "binomial")
+fit.full.glm.backward <- stepAIC (fit.full.glm, scope = ~ 1, direction = "backward") #AIC=966.57
+summary(fit.full.glm.backward)
+
+fit.min.glm <- glm (Class ~ 1, data = GermanCredit, family = "binomial")
+names(GermanCredit)  %>% cat(sep=" + ")
+form = ~ Duration + Amount + InstallmentRatePercentage + ResidenceDuration + Age + NumberExistingCredits + NumberPeopleMaintenance + Telephone + ForeignWorker + Class + CheckingAccountStatus.lt.0 + CheckingAccountStatus.0.to.200 + CheckingAccountStatus.gt.200 + CheckingAccountStatus.none + CreditHistory.NoCredit.AllPaid + CreditHistory.ThisBank.AllPaid + CreditHistory.PaidDuly + CreditHistory.Delay + CreditHistory.Critical + Purpose.NewCar + Purpose.UsedCar + Purpose.Furniture.Equipment + Purpose.Radio.Television + Purpose.DomesticAppliance + Purpose.Repairs + Purpose.Education + Purpose.Vacation + Purpose.Retraining + Purpose.Business + Purpose.Other + SavingsAccountBonds.lt.100 + SavingsAccountBonds.100.to.500 + SavingsAccountBonds.500.to.1000 + SavingsAccountBonds.gt.1000 + SavingsAccountBonds.Unknown + EmploymentDuration.lt.1 + EmploymentDuration.1.to.4 + EmploymentDuration.4.to.7 + EmploymentDuration.gt.7 + EmploymentDuration.Unemployed + Personal.Male.Divorced.Seperated + Personal.Female.NotSingle + Personal.Male.Single + Personal.Male.Married.Widowed + Personal.Female.Single + OtherDebtorsGuarantors.None + OtherDebtorsGuarantors.CoApplicant + OtherDebtorsGuarantors.Guarantor + Property.RealEstate + Property.Insurance + Property.CarOther + Property.Unknown + OtherInstallmentPlans.Bank + OtherInstallmentPlans.Stores + OtherInstallmentPlans.None + Housing.Rent + Housing.Own + Housing.ForFree + Job.UnemployedUnskilled + Job.UnskilledResident + Job.SkilledEmployee + Job.Management.SelfEmp.HighlyQualified
+fit.min.glm.forward <- stepAIC (fit.min.glm, scope = form, direction = "forward") #AIC=958.15
+
+
+#library(corrgram)
+#corrgram(GermanCredit)
 ```
 
 
@@ -123,6 +167,43 @@ Using the GermanCredit data from the **Caret** package/ UCI Machine Learning Lib
 
 - Implement Kuhn's iterative feature removal function described in **APM** Section 3.5, page 47
 
+```{r}
+
+ICFR <- function(DF, cutoff){
+  
+  COR<-cor(DF)
+  max.cor <- max(abs(COR[COR!=1]))
+  
+  while (max.cor > cutoff){
+  
+      cor.pair <- row.names(which(abs(COR) == max.cor, arr.ind = TRUE))
+      
+      var.max.cor <- cor.pair[ 
+        which(rowMeans(abs(COR[cor.pair, ])) == max(rowMeans(abs(COR[cor.pair, ]))), arr.ind = TRUE) ]
+            
+      COR <- subset( COR, select = - get(var.max.cor))
+      COR <- COR[rownames(COR)!= var.max.cor, ]
+     
+      DF <- DF[, names(DF)!=as.symbol(var.max.cor)] 
+      max.cor <- max(abs(COR[COR!=1]))
+      
+      }
+  
+  return(DF)
+}
+
+
+set.seed(100) 
+x1<-rnorm(100) 
+x2<-rnorm(100)
+x3<-rnorm(100)
+x4<-rnorm(100)
+x5<-rnorm(100)
+x6<-rnorm(100)
+DF <- data.frame(x1, x2, x3, x4, x5, x6)
+ICFR(DF, 0.2)
+#findCorrelation(COR, cutoff = .1)
+```
 
 
 ## Synthetic Data (Optional)
@@ -149,12 +230,12 @@ Next synthesis a response, `y` using the betas provided and an intercept that is
 
 ```{r}
 
-beta0 <- rnorm(nsamples,0,15)  # intercept!
+beta0 <- rnorm(nsamples,20,2)  # intercept!
 beta1 <- 2.3
 beta2 <- 4
 beta3 <- 7
 
-betas <- matrix( c(2.5, 4, 7), nrow=1  )  # 1x4 matrix
+betas <- matrix( c(2.3, 4, 7), nrow=1  )  # 1x4 matrix
 
 # x0 <- rep(1,nsamples) 
 
