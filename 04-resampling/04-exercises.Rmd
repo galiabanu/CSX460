@@ -1,0 +1,190 @@
+---
+title: "Sensitivity and Specificity"
+author: "Guzel Akhmadullina"
+date: "April 27, 2016"
+output: html_document
+---
+
+
+## Readings
+
+***APM***
+
+- ***Chapter 5 Measuring Performance in Regression Models*** (esp. ***5.2 The Variance Bias Trade-Off***)  (5 pages)
+- ***Chapter 11 Measuring Performance in Classification Models*** (~20 pages)
+- ***Chapter 7.4 K-Nearest Neighbors (regression)*** (2 pages)
+- ***Chapter 13.5 K-Nearest Neighbors (classification)*** (3 pages)
+
+
+```{r, echo=FALSE, results='hide', warning=FALSE }
+packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+.. = NULL  # For Aesthetics
+
+```
+
+
+## EXERCISE 1: Resampling
+
+`x` is a random variable. We want to not only know what the `mean(x)` is but want to calculate the uncertainty of `mean(x)`.  Measuring the uncertainty requires repeated measurements of `mean(x)`.
+
+- Calculate the mean of `x`.
+- Calculte the `sd( mean(x) )` using the **using 10-fold cross-validation**.  Create your own folds, show your work. (An example is for the Bootstrap is given as a hint. )
+
+
+```{r}
+set.seed(1) 
+x <- runif(20,1,20)
+
+x_mean = mean(x)
+
+# CROSS-VALIDATION
+
+#x[order(rnorm(20))]
+k=10
+cv.groups <- split(x,1:k)
+x_mean_cv <- numeric()
+
+for(i in 1:k){
+  fold <- unlist(cv.groups[i])
+  x_mean_cv <- append (x_mean_cv, sample(x[x!=fold]) %>% mean)
+}
+sd_cv <- sd(x_mean_cv)
+
+# BOOTSTRAP (EXAMPLE)
+sd_boot <- sapply(1:k, function(i) sample(x,replace=TRUE) %>% mean ) %>% sd
+
+#equal to the above expression
+x_mean <- numeric()
+for(k in 1:20){
+  x_mean <- append (x_mean, sample(x,replace=TRUE) %>% mean)
+}
+sd(x_mean)
+```
+
+
+- sd_cv   is: `r sd_cv`
+- sd_boot is: `r sd_boot`
+
+
+
+# Exercise 2: Binomial Metrics
+
+Here's a really simple Model of Versicolor iris based on the **iris** data :
+
+```{r}
+set.seed(1)
+data(iris)
+
+qplot( data=iris, x=Petal.Length, y=Sepal.Length, color=Species )
+
+# Create Dependent Variable
+iris$Versicolor <- 
+  ifelse( iris$Species == 'versicolor', "versicolor", "other" ) %>% as.factor
+iris$Species = NULL 
+
+wh <- sample.int( nrow(iris), size=nrow(iris)/2 )
+train <- iris[ wh,]
+test <- iris[ -wh, ]
+
+fit.glm <- glm( Versicolor ~ . - Sepal.Length, data=train, family=binomial )
+```
+
+
+Use the models to and write functions to calculate:
+
+* Prevalence 
+* Accuracy
+* Error Rate / Misclassification Rate
+* True Positive Rate  
+* False Positive Rate
+* True Negative Rate  
+* False Negative Rate 
+* Sensitivity 
+* Specificity 
+* Recall 
+* Precision
+
+The functions should take two logical vectors of the same length, `y` and `yhat`
+
+```{r}
+
+prevalence = function(y,yhat) {sum(y) /          # Condition Positive
+                              (sum(y)+sum(!y))}  # Total Population
+
+accuracy   = function(y,yhat) {(sum((y & yhat) | (!y & !yhat))) /  # True Positive + True Negative
+                              (sum(y)+sum(!y))}                    # Total Population
+
+error_rate = function(y,yhat) {(sum((!y & yhat) | (y & !yhat))) /    # False Positive + False Negative
+                              (sum(y)+sum(!y))}                    # Total Population
+
+# True Positive Rate, Recall, Sensitivity
+tpr = function(y,yhat) {sum(y & yhat) /  # True Positive
+                        sum(y)}          # Condition Positive
+
+# False Positive Rate, Fall-out
+fpr = function(y,yhat) {sum(!y & yhat) / # False Positive
+                        sum(!y)}         # Condition Negative 
+
+# True Negative Rate, Specificity
+tnr = function(y,yhat) {sum(!y & !yhat) /  # True Negative
+                        sum(!y)}           # Condition Negative
+
+# False Negative Rate, Miss Rate
+fnr = function(y,yhat) {sum(y & !yhat) / # False Negative
+                        sum(y)}          # Condition Positive 
+
+sensitivity = tpr
+
+specificity = tnr
+
+recall = tpr 
+
+# Positive Predictive Value, Precision
+precision = function(y,yhat) {sum(y & yhat) /   # True Positive
+                              sum(yhat)}        # Test Outcome Positive
+
+# Negative Predictive Value
+npv = function(y,yhat) {sum(!y & !yhat) /   # True Negative
+                        sum(!yhat)}         # Test Outcome Negative
+
+# EXAMPLE: fpr
+# The FPR is THE NUMBER OF FALSE POSITIVES / NEGATIVES (TN+FP)
+
+threshold = 0.5 
+y = test$Versicolor == 'versicolor'
+yhat = predict(fit.glm, test, type="response") > threshold
+
+
+prevalence(y,yhat)
+accuracy(y,yhat)
+error_rate(y,yhat)
+tpr(y,yhat)
+fpr(y,yhat)
+tnr(y,yhat)
+fnr(y,yhat)
+sensitivity(y,yhat)
+specificity(y,yhat)
+recall(y,yhat)
+precision(y,yhat)
+npv(y,yhat)
+```
+
+- What is wrong with the modeling approach used?
+
+TPR = 54%, TNR = 81%
+
+It seems that the model is better at predicting the negative outcomes ("other" type of iris), since it can define 81% of non-events correctly. However, TPR shows, that just 54% of events ("versicolor" type of iris) can be defined correctly out of all positive events. 
+The solution to the problem might be a trade-off between TPR and TNR, since we are interested in higher rate of true positives in the model. It can be done by changing the threshold value.
+
+
+
+
+
+
