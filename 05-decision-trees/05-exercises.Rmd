@@ -1,0 +1,154 @@
+---
+title: "05-exercises"
+author: "Guzel Akhmadullina"
+date: "2016-05-04"
+output: html_document
+---
+
+## Reading:
+- **APM** Chapter 8.1-8.5 "Regression Trees and Rule-Based Models" (25 pages)
+- **APM** Chapter 14.1-14.5 "Classification Trees and Rule-Based"  
+
+```{r, echo=FALSE, results='hide', warning=FALSE }
+packs <-  c('ggplot2', 'magrittr', 'dplyr', 'caret', 'AppliedPredictiveModeling')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+.. = NULL  # For Aesthetics
+
+```
+
+
+## Exercise 1: GermanCredit
+
+Revisit the GermanCredit data. Use `caret` to build models of `Class` using the following techniques:
+
+- glm
+- rpart
+- knn
+- party::ctree
+- randomForest
+- A method of your choice from the Caret Model List (you will need to install any dependencies)
+
+Save the caret objects with the names provided.
+
+```{r}
+
+ctrl <- trainControl( method="boot", number=5, classProb=TRUE, savePrediction=TRUE )
+
+fit.glm   <- train( Class ~ ., data=gc, method="glm",   trControl=ctrl, 
+                    family="binomial" )
+fit.knn   <- train( Class ~ ., data=gc, method="knn",   trControl=ctrl, 
+                    tuneGrid=data.frame(k=c(seq(66,81, by=3))) )
+library(rpart)
+# Tuning parameter cp
+fit.rpart <- train( Class ~ ., data=gc, method="rpart", trControl=ctrl, 
+                    tuneLength=10 ) 
+#fit.rpart$finalModel %>% draw.tree( )
+
+# Tuning parameter mtry
+library(randomForest)
+fit.rf    <- train( Class ~ ., data=gc, method="rf",    trControl=ctrl, 
+                    tuneLength=3) 
+fit.myown <- train( Class ~ ., data=gc, method="glmStepAIC", trControl=ctrl, 
+                    family="binomial", direction="both")
+
+```
+
+- Compare the models using `caret::confusionMatrix`
+- Comparing the models Using the `pROC` packages
+  - create ROC curves for the models 
+
+```{r}
+# CONFUSION MATRIX
+
+#fit.glm$finalModel  %>% summary  # Model output
+
+cm.glm   <- table(fit.glm$pred$pred,   fit.glm$pred$obs)   %>% confusionMatrix()
+cm.knn   <- table(fit.knn$pred$pred,   fit.knn$pred$obs)   %>% confusionMatrix()
+cm.rpart <- table(fit.rpart$pred$pred, fit.rpart$pred$obs) %>% confusionMatrix()
+cm.rf    <- table(fit.rf$pred$pred,    fit.rf$pred$obs)    %>% confusionMatrix()
+cm.myown <- table(fit.myown$pred$pred, fit.myown$pred$obs) %>% confusionMatrix()
+
+# ROC CURVE
+library(pROC)
+
+roc.glm   <- roc(fit.glm$pred$obs,   fit.glm$pred$Bad,   auc=TRUE )
+roc.knn   <- roc(fit.knn$pred$obs,   fit.knn$pred$Bad,   auc=TRUE )
+roc.rpart <- roc(fit.rpart$pred$obs, fit.rpart$pred$Bad, auc=TRUE )
+roc.rf    <- roc(fit.rf$pred$obs,    fit.rf$pred$Bad,    auc=TRUE )
+roc.myown <- roc(fit.myown$pred$obs, fit.myown$pred$Bad, auc=TRUE )
+
+roc.glm   %>% plot(grid=TRUE, col="red")
+roc.knn   %>% plot(add=TRUE, col="blue")
+roc.rpart %>% plot(add=TRUE, col="violet")
+roc.rf    %>% plot(add=TRUE, col="black")
+roc.myown %>% plot(add=TRUE, col="green")
+
+legend("topleft", inset=0.05, cex = 0.8, title="Legend",
+       c("glm","knn", "rpart", "rf", "myown"), lty=c(1,1),
+       col=c("red","blue", "violet", "black", "green"), bg="grey96")
+
+legend("bottomright", inset=0.05, cex = 0.8, title="AUC",
+       c("glm","knn", "rpart", "rf", "myown"),
+       c(round(roc.glm$auc, digits=4),   round(roc.knn$auc, digits=4),
+         round(roc.rpart$auc, digits=4), round(roc.rf$auc, digits=4),
+         round(roc.myown$auc, digits=4)),
+       lty=c(1,1), col=c("red","blue", "violet", "black", "green"), bg="grey96")
+
+```
+
+
+Q: Which models would you select based on these tools?
+
+
+```{r}
+
+Methods <- data.frame (Method = c("glm", "knn", "rpart", "rf", "myown"), 
+    Accuracy = c(cm.glm$overall[1], cm.knn$overall[1], 
+                 cm.rpart$overall[1], cm.rf$overall[1], cm.myown$overall[1]),
+    Kappa = c(cm.glm$overall[2], cm.knn$overall[2], 
+              cm.rpart$overall[2], cm.rf$overall[2], cm.myown$overall[2]),
+    Sensitivity = c(cm.glm$byClass[1], cm.knn$byClass[1], 
+                    cm.rpart$byClass[1], cm.rf$byClass[1], cm.myown$byClass[1]),
+    Specificity = c(cm.glm$byClass[2], cm.knn$byClass[2], 
+                    cm.rpart$byClass[2], cm.rf$byClass[2], cm.myown$byClass[2]),
+    AUC = c(roc.glm$auc, roc.knn$auc, roc.rpart$auc, roc.rf$auc, roc.myown$auc))
+
+Methods
+
+```
+From the model outputs, we see that glm, rf and myown (StepAIC) models have very close accuracy rate of 74%. Kappa value is in a good range too. AUCs are pretty close to each other, around 0.765. So, to be able to choose the model, we need to look closer to the sensitivity and specificity rates. We want smaller Sensitivity and larger value of Specificity. Based on that, we choose Random Forest Model. Moreover, ROC for rf has steeper increase of the graph for sensitivity between [0, 0.2]
+
+
+Q: If you assume that a `Class=="bad""` is 10 more costly than `Class=="good"`, determine your threshold for the model of your choice.  Show your work.
+
+
+```{r}
+
+# Cost matrix
+costs = matrix(c(0, 1, 10, 0), 2)
+colnames(costs) = rownames(costs) = c("Bad", "Good")
+costs
+
+## Calculate the theoretical threshold for the positive class
+threshold = costs[2,1]/(costs[2,1] + costs[1,2])
+threshold
+
+# Predict posterior probabilities
+# Threshold: Bad =0.5, Good = 0.5)
+#pred.rf = predict(fit.rf$finalModel, task = gc)
+#fit.rf$pred  %>%  head()
+
+## Predict class labels according to the theoretical threshold
+#pred.rf.th = setThreshold(fit.rf$pred$pred, th)
+#pred.rf.th
+
+#tune.res = tuneThreshold(pred = r$pred, measure = credit.costs)
+
+
+```
