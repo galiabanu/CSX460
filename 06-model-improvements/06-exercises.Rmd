@@ -1,0 +1,158 @@
+---
+title: "05-exercises"
+author: "Guzel Akhmadullina"
+date: "2016-05-xx"
+output: html_document
+---
+
+## Reading:
+- **APM** Chapter 8.6 and 8.8 
+- **APM** Chapter 14.8 
+- **APM** Chapter 7.1 & 7.3 "Non-Linear Regression Models"
+- **APM** Chapter 13.2 & 13.4 "Non-Linear Classifcation Models"
+
+
+```{r,echo=FALSE}
+
+packs <-  c('AppliedPredictiveModeling', 'ggplot2', 'magrittr', 'dplyr', 'rattle')
+
+for( nm in packs ) { 
+  # message(nm)
+  if( ! nm  %in% installed.packages()[,1]  ) install.packages(nm)
+  library(nm, character.only = TRUE)
+}
+
+# Load data set into environment
+data(FuelEconomy)
+.. = NULL  # Needed for aesthetics 
+
+FE <- dplyr::bind_rows(cars2010, cars2011, cars2012)    # Define Da
+
+```
+
+## Fuel Economy 
+
+
+This week we return to the Fuel Economy Data having learned much about model building. This assignment is to go through the process of building several regression models and pick the most predictive model. Use the `FE` data set created for you above.
+
+
+Start by making choosing a metric and making a naive guess of model performance: 
+
+Metric: _RMSE_
+Naive Guess: _mean(FE$FE) = 35.03823_
+Expected Model Performance (based on Naive Guess): _8.096176_
+
+Show your work below for the calculations
+
+```{r} 
+
+naive_guess = mean(FE$FE)
+
+pred_naive <- rep(naive_guess, nrow(FE))
+err_naive_guess = rmse(FE$FE, pred_naive)
+
+```
+
+
+Based only your intuition, how low do your think you can get your metric: _4_
+
+
+## Examine your data
+
+ * Plot your response/outcome 
+
+ * Make a guess of a strong predictor: _EngDispl_  
+ * Plot your response vs your predictor. 
+
+```{r}
+
+plot(1:nrow(FE), FE$FE)
+abline(h=naive_guess, col="red", lwd = 4)
+
+plot(FE$EngDispl, FE$FE)
+
+```
+
+
+
+## Build Simple Models
+
+Using **caret**, build a simple linear model and a simple tree model. 
+
+```{r}
+
+library(rpart)
+library(caret)
+
+# Split the data
+
+# Shuffle the dataset, call the result shuffled
+n<-nrow(FE)
+shuffled <- FE[sample(n),]
+
+# Split the data in train and test
+train_indices <- 1:round(0.7*n)
+test_indices <- (round(0.7*n)+1):n
+
+FE.train <- shuffled[train_indices,]
+FE.test <- shuffled[test_indices,]
+
+
+# Building the models
+ctrl <- trainControl( method="boot", number=5, savePrediction=TRUE )
+
+fit.lm <- train(FE ~ ., data = FE.train, method = "lm", trControl=ctrl)
+fit.rp <- train(FE ~ ., data = FE.train, method = "rpart", trControl=ctrl)
+
+# Building a performance table
+perf <- data.frame (Method = "lm", RMSE = rmse(FE.test$FE, predict(fit.lm, FE.test)))
+perf <- rbind (perf, data.frame (Method = "rpart", RMSE = rmse(FE.test$FE, predict(fit.rp, FE.test))))
+perf
+
+# Plot the Models 
+plot(fit.lm$finalModel)
+fancyRpartPlot(fit.rp$finalModel) 
+plot(fit.rp)
+
+# Importance of the Predictors
+plot(varImp(fit.lm), top=10)
+plot(varImp(fit.rp), top=5)
+
+```
+
+
+What did you learn about the data from these models.
+EngDispl, NumCyl and DriveDescTwoWheelDriveFront are the most important predictors in both models.
+
+
+## Build More Advanced Models
+
+Now refine your models. Use **caret** to build advanced models:
+- one that uses model averaging (bagging) 
+- one that uses boosting 
+
+```{r}
+
+# Bagged CART model
+fit.bag <- train(FE ~ ., data = FE.train, method = "treebag", trControl=ctrl) 
+perf <- rbind( perf, data.frame( Method = "baggedCART", RMSE = rmse(FE.test$FE, predict(fit.bag, FE.test))))
+rmse.bag.test = rmse(FE.test$FE, predict(fit.bag, FE.test))
+plot(varImp(fit.bag), top=10)
+
+# Boosting model
+fit.boost <- train(FE ~ ., data = FE.train, method = "gbm", trControl=ctrl) 
+perf <- rbind( perf, data.frame( Method = "gbm", RMSE = rmse(FE.test$FE, predict(fit.boost, FE.test))))
+plot(varImp(fit.boost), top=5)
+plot(fit.boost)
+
+perf
+```
+
+
+## Conclusion 
+
+Which model would you use and why?  Under different circumstances why would you choose one of the other models.
+
+I will use model build with Stochastic Gradient Boosting, since it gives the best performance of smallest RMSE = 3.452129. But if I need to have more interpretable model, then I will choose a linear model. 
+
+
